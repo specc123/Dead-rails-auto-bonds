@@ -1,0 +1,130 @@
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+local dashSpeed = humanoid.WalkSpeed * 10  -- Increased speed, still safe
+local stepTime = 0.01  -- Smaller delay for faster movement
+local bondsCollected = 0
+local collectingBonds = false
+local noclipEnabled = false
+local invincibleEnabled = false
+
+-- Create HUD
+local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+
+local bondCounter = Instance.new("TextLabel", screenGui)
+bondCounter.Size = UDim2.new(0, 200, 0, 50)
+bondCounter.Position = UDim2.new(0.05, 0, 0.05, 0)
+bondCounter.BackgroundColor3 = Color3.new(0, 0, 0)
+bondCounter.TextColor3 = Color3.new(1, 1, 1)
+bondCounter.TextScaled = true
+
+local statusLabel = Instance.new("TextLabel", screenGui)
+statusLabel.Size = UDim2.new(0, 200, 0, 50)
+statusLabel.Position = UDim2.new(0.05, 0, 0.12, 0)
+statusLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+statusLabel.TextColor3 = Color3.new(1, 1, 1)
+statusLabel.TextScaled = true
+
+local toggleButton = Instance.new("TextButton", screenGui)
+toggleButton.Size = UDim2.new(0, 200, 0, 50)
+toggleButton.Position = UDim2.new(0.05, 0, 0.2, 0)
+toggleButton.BackgroundColor3 = Color3.new(0, 0, 1)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.TextScaled = true
+toggleButton.Text = "Start Collecting Bonds"
+
+-- Function to update HUD
+local function updateHUD()
+    bondCounter.Text = "Bonds Collected: " .. bondsCollected
+    statusLabel.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF") .. " | Invincible: " .. (invincibleEnabled and "ON" or "OFF")
+end
+
+-- Function to enable noclip
+local function enableNoclip()
+    noclipEnabled = true
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+    updateHUD()
+end
+
+-- Function to disable noclip
+local function disableNoclip()
+    noclipEnabled = false
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
+    updateHUD()
+end
+
+-- Function to enable invincibility
+local function enableInvincibility()
+    invincibleEnabled = true
+    humanoid.Health = humanoid.MaxHealth  
+    humanoid:GetPropertyChangedSignal("Health"):Connect(function()  
+        humanoid.Health = humanoid.MaxHealth  
+    end)
+    updateHUD()
+end
+
+-- Function to move extremely fast without triggering anti-cheat
+local function dashToPosition(targetPos)
+    enableNoclip()
+    local startPos = humanoidRootPart.Position
+    local distance = (targetPos - startPos).magnitude
+    local steps = math.max(1, math.floor(distance / dashSpeed))  -- Ensure at least one step
+
+    for i = 1, steps do
+        if (humanoidRootPart.Position - targetPos).magnitude < 1 then break end
+        humanoidRootPart.CFrame = humanoidRootPart.CFrame + (targetPos - startPos).unit * dashSpeed
+        wait(stepTime)
+    end
+
+    disableNoclip()
+end
+
+-- Function to collect all bonds quickly
+local function collectBonds()
+    if collectingBonds then return end  
+    collectingBonds = true
+    toggleButton.Text = "Stop Collecting Bonds"
+
+    enableInvincibility()
+    local bondLocations = {}
+
+    for _, obj in pairs(game.Workspace:GetDescendants()) do
+        if obj:IsA("Part") and obj.Name == "Bond" then
+            table.insert(bondLocations, obj.Position)
+        end
+    end
+
+    for _, bondPos in ipairs(bondLocations) do
+        if not collectingBonds then break end  
+        dashToPosition(bondPos)
+        bondsCollected = bondsCollected + 1
+        updateHUD()
+        wait(0.1)  -- Minimal delay for anti-cheat evasion
+    end
+
+    collectingBonds = false
+    toggleButton.Text = "Start Collecting Bonds"
+end
+
+-- Toggle button functionality
+toggleButton.MouseButton1Click:Connect(function()
+    if collectingBonds then
+        collectingBonds = false
+        toggleButton.Text = "Start Collecting Bonds"
+    else
+        collectBonds()
+    end
+end)
+
+-- Initialize HUD
+updateHUD()
