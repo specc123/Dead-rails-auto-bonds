@@ -11,29 +11,53 @@ local noclipEnabled = false
 local invincibleEnabled = false
 
 -- Create HUD
-local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player.PlayerGui
 
-local bondCounter = Instance.new("TextLabel", screenGui)
-bondCounter.Size = UDim2.new(0, 200, 0, 50)
-bondCounter.Position = UDim2.new(0.05, 0, 0.05, 0)
-bondCounter.BackgroundColor3 = Color3.new(0, 0, 0)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 250, 0, 150)
+mainFrame.Position = UDim2.new(0.05, 0, 0.05, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BackgroundTransparency = 0.3
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+titleLabel.BackgroundTransparency = 0.5
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Text = "Bonds Collector"
+titleLabel.TextScaled = true
+titleLabel.Parent = mainFrame
+
+local bondCounter = Instance.new("TextLabel")
+bondCounter.Size = UDim2.new(1, -10, 0, 30)
+bondCounter.Position = UDim2.new(0, 5, 0, 35)
+bondCounter.BackgroundTransparency = 1
 bondCounter.TextColor3 = Color3.new(1, 1, 1)
 bondCounter.TextScaled = true
+bondCounter.Text = "Bonds Collected: 0"
+bondCounter.Parent = mainFrame
 
-local statusLabel = Instance.new("TextLabel", screenGui)
-statusLabel.Size = UDim2.new(0, 200, 0, 50)
-statusLabel.Position = UDim2.new(0.05, 0, 0.12, 0)
-statusLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -10, 0, 30)
+statusLabel.Position = UDim2.new(0, 5, 0, 70)
+statusLabel.BackgroundTransparency = 1
 statusLabel.TextColor3 = Color3.new(1, 1, 1)
 statusLabel.TextScaled = true
+statusLabel.Text = "Noclip: OFF | Invincible: OFF"
+statusLabel.Parent = mainFrame
 
-local toggleButton = Instance.new("TextButton", screenGui)
-toggleButton.Size = UDim2.new(0, 200, 0, 50)
-toggleButton.Position = UDim2.new(0.05, 0, 0.2, 0)
-toggleButton.BackgroundColor3 = Color3.new(0, 0, 1)
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(1, -10, 0, 40)
+toggleButton.Position = UDim2.new(0, 5, 0, 105)
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 100, 255)
 toggleButton.TextColor3 = Color3.new(1, 1, 1)
 toggleButton.TextScaled = true
 toggleButton.Text = "Start Collecting Bonds"
+toggleButton.Parent = mainFrame
 
 -- Function to update HUD
 local function updateHUD()
