@@ -34,20 +34,22 @@ teleportButton.Font = Enum.Font.SourceSansBold
 teleportButton.TextScaled = true
 teleportButton.Parent = frame
 
--- Function to find all "Bond" objects
+-- Function to find "Bond" collectibles
 local function findBonds()
     local bonds = {}
     for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj.Name == "Bond" then
+        if obj:IsA("Model") and obj.Name == "Bond" then -- If "Bond" is a Model
+            table.insert(bonds, obj)
+        elseif obj:IsA("BasePart") and obj.Name == "Bond" then -- If "Bond" is a Part
             table.insert(bonds, obj)
         end
     end
     return bonds
 end
 
--- Function to teleport smoothly (anti-cheat bypass)
+-- Smooth teleport function (bypass anti-cheat)
 local function teleportBypass(targetPosition)
-    humanoidRootPart:SetNetworkOwner(player) -- Reduce server checks
+    humanoidRootPart:SetNetworkOwner(player) -- Reduce detection risk
     local startPosition = humanoidRootPart.Position
     local duration = 0.5
     local steps = 30
@@ -59,35 +61,37 @@ local function teleportBypass(targetPosition)
         task.wait(duration / steps)
     end
 
-    humanoidRootPart.Velocity = Vector3.new(0, 2, 0) -- Fake movement
+    humanoidRootPart.Velocity = Vector3.new(0, 2, 0) -- Fake normal movement
 end
 
--- Function to try collecting the "Bond"
+-- Function to collect a "Bond"
 local function collectBond(bond)
     if bond and bond.Parent then
         local success = false
         
-        -- Try firing any ProximityPrompt inside the Bond
-        for _, child in pairs(bond:GetChildren()) do
-            if child:IsA("ProximityPrompt") then
-                fireproximityprompt(child) -- Fire the prompt
+        -- 1️⃣ Attempt touch-based collection
+        for _, part in pairs(bond:GetChildren()) do
+            if part:IsA("BasePart") then
+                firetouchinterest(humanoidRootPart, part, 0) -- Simulate touching the bond
+                task.wait(0.1)
+                firetouchinterest(humanoidRootPart, part, 1)
                 success = true
                 break
             end
         end
 
-        -- Try triggering RemoteEvent if one exists
+        -- 2️⃣ Try triggering any RemoteEvent inside the Bond
         if not success then
             for _, child in pairs(bond:GetChildren()) do
                 if child:IsA("RemoteEvent") then
-                    child:FireServer() -- Fire the event
+                    child:FireServer() -- Fire the event to collect Bond
                     success = true
                     break
                 end
             end
         end
 
-        -- Delete if collection didn't work
+        -- 3️⃣ Try destroying the Bond (last resort)
         if not success then
             bond:Destroy()
         end
@@ -106,7 +110,7 @@ teleportButton.MouseButton1Click:Connect(function()
     local closestBond = nil
     local minDistance = math.huge
     for _, bond in pairs(bonds) do
-        local distance = (bond.Position - humanoidRootPart.Position).Magnitude
+        local distance = (bond:GetPivot().Position - humanoidRootPart.Position).Magnitude
         if distance < minDistance then
             minDistance = distance
             closestBond = bond
@@ -114,7 +118,7 @@ teleportButton.MouseButton1Click:Connect(function()
     end
 
     if closestBond then
-        teleportBypass(closestBond.Position + Vector3.new(0, 5, 0)) -- Teleport above the object
+        teleportBypass(closestBond:GetPivot().Position + Vector3.new(0, 2, 0)) -- Teleport slightly above
         task.wait(0.3) -- Short delay before collecting
         collectBond(closestBond)
     end
