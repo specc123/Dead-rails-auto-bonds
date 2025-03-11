@@ -1,130 +1,121 @@
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-local humanoid = character:FindFirstChildOfClass("Humanoid")
-
-local dashSpeed = humanoid.WalkSpeed * 10  -- Increased speed, still safe
-local stepTime = 0.01  -- Smaller delay for faster movement
-local bondsCollected = 0
-local collectingBonds = false
-local noclipEnabled = false
-local invincibleEnabled = false
 
 -- Create HUD
-local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
 
-local bondCounter = Instance.new("TextLabel", screenGui)
-bondCounter.Size = UDim2.new(0, 200, 0, 50)
-bondCounter.Position = UDim2.new(0.05, 0, 0.05, 0)
-bondCounter.BackgroundColor3 = Color3.new(0, 0, 0)
-bondCounter.TextColor3 = Color3.new(1, 1, 1)
-bondCounter.TextScaled = true
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 200)
+frame.Position = UDim2.new(0.05, 0, 0.1, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 2
+frame.Parent = screenGui
+frame.Active = true
+frame.Draggable = true -- Movable HUD
 
-local statusLabel = Instance.new("TextLabel", screenGui)
-statusLabel.Size = UDim2.new(0, 200, 0, 50)
-statusLabel.Position = UDim2.new(0.05, 0, 0.12, 0)
-statusLabel.BackgroundColor3 = Color3.new(0, 0, 0)
-statusLabel.TextColor3 = Color3.new(1, 1, 1)
-statusLabel.TextScaled = true
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0.2, 0)
+title.BackgroundTransparency = 1
+title.Text = "Teleport & Collect 'Bond'"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.SourceSansBold
+title.TextScaled = true
+title.Parent = frame
 
-local toggleButton = Instance.new("TextButton", screenGui)
-toggleButton.Size = UDim2.new(0, 200, 0, 50)
-toggleButton.Position = UDim2.new(0.05, 0, 0.2, 0)
-toggleButton.BackgroundColor3 = Color3.new(0, 0, 1)
-toggleButton.TextColor3 = Color3.new(1, 1, 1)
-toggleButton.TextScaled = true
-toggleButton.Text = "Start Collecting Bonds"
+local teleportButton = Instance.new("TextButton")
+teleportButton.Size = UDim2.new(1, 0, 0.4, 0)
+teleportButton.Position = UDim2.new(0, 0, 0.6, 0)
+teleportButton.Text = "Teleport & Collect"
+teleportButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+teleportButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+teleportButton.Font = Enum.Font.SourceSansBold
+teleportButton.TextScaled = true
+teleportButton.Parent = frame
 
--- Function to update HUD
-local function updateHUD()
-    bondCounter.Text = "Bonds Collected: " .. bondsCollected
-    statusLabel.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF") .. " | Invincible: " .. (invincibleEnabled and "ON" or "OFF")
-end
-
--- Function to enable noclip
-local function enableNoclip()
-    noclipEnabled = true
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
+-- Function to find all "Bond" objects
+local function findBonds()
+    local bonds = {}
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name == "Bond" then
+            table.insert(bonds, obj)
         end
     end
-    updateHUD()
+    return bonds
 end
 
--- Function to disable noclip
-local function disableNoclip()
-    noclipEnabled = false
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = true
-        end
-    end
-    updateHUD()
-end
-
--- Function to enable invincibility
-local function enableInvincibility()
-    invincibleEnabled = true
-    humanoid.Health = humanoid.MaxHealth  
-    humanoid:GetPropertyChangedSignal("Health"):Connect(function()  
-        humanoid.Health = humanoid.MaxHealth  
-    end)
-    updateHUD()
-end
-
--- Function to move extremely fast without triggering anti-cheat
-local function dashToPosition(targetPos)
-    enableNoclip()
-    local startPos = humanoidRootPart.Position
-    local distance = (targetPos - startPos).magnitude
-    local steps = math.max(1, math.floor(distance / dashSpeed))  -- Ensure at least one step
+-- Function to teleport smoothly (anti-cheat bypass)
+local function teleportBypass(targetPosition)
+    humanoidRootPart:SetNetworkOwner(player) -- Reduce server checks
+    local startPosition = humanoidRootPart.Position
+    local duration = 0.5
+    local steps = 30
 
     for i = 1, steps do
-        if (humanoidRootPart.Position - targetPos).magnitude < 1 then break end
-        humanoidRootPart.CFrame = humanoidRootPart.CFrame + (targetPos - startPos).unit * dashSpeed
-        wait(stepTime)
+        local alpha = i / steps
+        humanoidRootPart.CFrame = CFrame.new(startPosition:Lerp(targetPosition, alpha))
+        humanoidRootPart.Velocity = Vector3.new(0, 0, 0) 
+        task.wait(duration / steps)
     end
 
-    disableNoclip()
+    humanoidRootPart.Velocity = Vector3.new(0, 2, 0) -- Fake movement
 end
 
--- Function to collect all bonds quickly
-local function collectBonds()
-    if collectingBonds then return end  
-    collectingBonds = true
-    toggleButton.Text = "Stop Collecting Bonds"
+-- Function to try collecting the "Bond"
+local function collectBond(bond)
+    if bond and bond.Parent then
+        local success = false
+        
+        -- Try firing any ProximityPrompt inside the Bond
+        for _, child in pairs(bond:GetChildren()) do
+            if child:IsA("ProximityPrompt") then
+                fireproximityprompt(child) -- Fire the prompt
+                success = true
+                break
+            end
+        end
 
-    enableInvincibility()
-    local bondLocations = {}
+        -- Try triggering RemoteEvent if one exists
+        if not success then
+            for _, child in pairs(bond:GetChildren()) do
+                if child:IsA("RemoteEvent") then
+                    child:FireServer() -- Fire the event
+                    success = true
+                    break
+                end
+            end
+        end
 
-    for _, obj in pairs(game.Workspace:GetDescendants()) do
-        if obj:IsA("Part") and obj.Name == "Bond" then
-            table.insert(bondLocations, obj.Position)
+        -- Delete if collection didn't work
+        if not success then
+            bond:Destroy()
+        end
+    end
+end
+
+-- Button function: Teleports to and collects the closest "Bond"
+teleportButton.MouseButton1Click:Connect(function()
+    local bonds = findBonds()
+    if #bonds == 0 then
+        title.Text = "No 'Bond' Objects Found!"
+        return
+    end
+
+    -- Find closest Bond
+    local closestBond = nil
+    local minDistance = math.huge
+    for _, bond in pairs(bonds) do
+        local distance = (bond.Position - humanoidRootPart.Position).Magnitude
+        if distance < minDistance then
+            minDistance = distance
+            closestBond = bond
         end
     end
 
-    for _, bondPos in ipairs(bondLocations) do
-        if not collectingBonds then break end  
-        dashToPosition(bondPos)
-        bondsCollected = bondsCollected + 1
-        updateHUD()
-        wait(0.1)  -- Minimal delay for anti-cheat evasion
-    end
-
-    collectingBonds = false
-    toggleButton.Text = "Start Collecting Bonds"
-end
-
--- Toggle button functionality
-toggleButton.MouseButton1Click:Connect(function()
-    if collectingBonds then
-        collectingBonds = false
-        toggleButton.Text = "Start Collecting Bonds"
-    else
-        collectBonds()
+    if closestBond then
+        teleportBypass(closestBond.Position + Vector3.new(0, 5, 0)) -- Teleport above the object
+        task.wait(0.3) -- Short delay before collecting
+        collectBond(closestBond)
     end
 end)
-
--- Initialize HUD
-updateHUD()
